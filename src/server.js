@@ -57,8 +57,8 @@ server.post("/login", async(req, res) => {
     }
 });
 
-//POST Cadastro
-server.post("/cadastro", async(req, res) => {
+//POST SignUp
+server.post("/signup", async(req, res) => {
     const userSchema = joi.object({
         name: joi.string().required(),
         email: joi.string().email().required(),
