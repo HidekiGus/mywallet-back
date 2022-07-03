@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { MongoClient } from "mongodb";
 import bcrypt from "bcrypt";
+import { v4 as uuid } from "uuid";
 
 dotenv.config();
 
@@ -33,13 +34,19 @@ server.post("/login", async(req, res) => {
             await mongoClient.connect();
             const db = mongoClient.db("wallet");
             const usersCollection = db.collection("users");
+            const sessionsCollection = db.collection("sessions");
             const user = await usersCollection.findOne({ email: email });
+            const token = uuid();
+
+            const corpo = { name: user.name, 
+                            token };
 
             if (!user) {
                 res.sendStatus(404);
                 return;
             } else if (bcrypt.compareSync(password, user.password)) {
-                res.sendStatus(200);
+                res.send(corpo).status(200);
+                await sessionsCollection.insertOne({ token, userId: user._id });
                 return;
             }
         } catch(error) {
@@ -63,16 +70,21 @@ server.post("/cadastro", async(req, res) => {
 
     const validate = userSchema.validate(req.body);
 
+    await mongoClient.connect();
+    const db = mongoClient.db("wallet");
+    const usersCollection = db.collection("users");
+
     const doPasswordsCheck = (password === passwordCheck);
+    const emailUsed = await usersCollection.findOne({ email });
 
     if (validate.error) {
         res.sendStatus(422);
         return;
+    } else if (emailUsed !== null) {
+        res.sendStatus(409);
+        return;
     } else if (doPasswordsCheck) {
         try {
-            await mongoClient.connect();
-            const db = mongoClient.db("wallet");
-            const usersCollection = db.collection("users");
             const encryptedPassword = bcrypt.hashSync(password, 10);
             await usersCollection.insertOne({ name, email, password: encryptedPassword });
             res.sendStatus(201);
@@ -81,8 +93,12 @@ server.post("/cadastro", async(req, res) => {
             res.sendStatus(500);
             return;
         }
+    } else {
+        res.sendStatus(400);
+        return;
     }
 });
+
 
 
 server.listen(5000, ()=>{console.log("Servidor rodando!")});
