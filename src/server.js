@@ -99,6 +99,24 @@ server.post("/signup", async(req, res) => {
     }
 });
 
+//GET Transactions
+server.get("/transactions", async(req, res) => {
+    const { authorization } = req.headers;
+    let id;
 
+    if (!authorization) {
+        res.sendStatus(422);
+        return;
+    } else {
+        await mongoClient.connect();
+        const db = mongoClient.db("wallet");
+        const transactionsCollection = db.collection("transactions");
+        const session = transactionsCollection.findOne({ token: authorization });
+        if (session !== null) {
+            id = session.userId;
+        }
+        
+    }
+});
 
 server.listen(5000, ()=>{console.log("Servidor rodando!")});
