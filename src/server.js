@@ -102,21 +102,64 @@ server.post("/signup", async(req, res) => {
 //GET Transactions
 server.get("/transactions", async(req, res) => {
     const { authorization } = req.headers;
-    let id;
 
     if (!authorization) {
         res.sendStatus(422);
         return;
     } else {
-        await mongoClient.connect();
-        const db = mongoClient.db("wallet");
-        const transactionsCollection = db.collection("transactions");
-        const session = transactionsCollection.findOne({ token: authorization });
-        if (session !== null) {
-            id = session.userId;
+        try {
+            const token = authorization.replace("Bearer ", "");
+            await mongoClient.connect();
+            const db = mongoClient.db("wallet");
+            const transactionsCollection = db.collection("transactions");
+            const sessionsCollection = db.collection("sessions");
+            const session = await sessionsCollection.findOne({ token });
+            if (session === null) {
+                res.sendStatus(401);
+                return;
+            } else {
+                const userTransactions = await transactionsCollection.find({ userId: session.userId}).toArray();
+                let userBalance = 0;
+                userTransactions.forEach(element => {
+                    if (element.type === "entrada") {
+                        userBalance += element.amount;
+                    } else {
+                        userBalance -= element.amount;
+                    }
+                });
+                res.send({ userTransactions, userBalance }).status(200);
+            }
+            
+        } catch(error) {
+            res.sendStatus(500);
+            return;
         }
-        
     }
+});
+
+
+
+//DELETE Sessions
+server.delete("/sessions", async(req, res) => {
+    const { authorization } = req.headers;
+
+    if (!authorization) {
+        res.sendStatus(422);
+        return;
+    } else {
+        try {
+            const token = authorization.replace("Bearer ", "");
+            await mongoClient.connect();
+            const db = mongoClient.db("wallet");
+            const sessionsCollection = db.collection("sessions");
+            await sessionsCollection.deleteOne({ token });
+            res.sendStatus(200);
+            return;
+        } catch(error) {
+            res.sendStatus(500);
+            return;
+        }
+    };
 });
 
 server.listen(5000, ()=>{console.log("Servidor rodando!")});
