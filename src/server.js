@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { MongoClient } from "mongodb";
 import bcrypt from "bcrypt";
 import { v4 as uuid } from "uuid";
+import dayjs from "dayjs";
 
 dotenv.config();
 
@@ -137,7 +138,53 @@ server.get("/transactions", async(req, res) => {
     }
 });
 
+//POST Transactions
+server.post("/transactions", async(req, res) => {
+    const { authorization } = req.headers;
 
+    const transactionSchema = joi.object({
+        type: joi.string().required(),
+        amount: joi.number().required(),
+        description: joi.string().required()
+    });
+
+    const validate = transactionSchema.validate(req.body);
+
+    if (validate.error) {
+        res.sendStatus(422);
+        return;
+    }
+
+    const { type, description, amount } = req.body;
+    const amountFloat = parseFloat(req.body.amount);
+
+    if (!authorization) {
+        res.sendStatus(422);
+        return;
+    } else {
+        try {
+            const token = authorization.replace("Bearer ", "");
+            await mongoClient.connect();
+            const db = mongoClient.db("wallet");
+            const transactionsCollection = db.collection("transactions");
+            const sessionsCollection = db.collection("sessions");
+            const session = await sessionsCollection.findOne({ token });
+            const transaction = {
+                type,
+                description,
+                amount: amountFloat,
+                userId: session.userId,
+                date: dayjs().format("DD/MM")
+            };
+            await transactionsCollection.insertOne(transaction);
+            res.sendStatus(201);
+            return;
+        } catch(error) {
+            res.sendStatus(500);
+            return;
+        }
+    }
+});
 
 //DELETE Sessions
 server.delete("/sessions", async(req, res) => {
