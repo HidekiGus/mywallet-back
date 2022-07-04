@@ -143,7 +143,7 @@ server.post("/transactions", async(req, res) => {
     const { authorization } = req.headers;
 
     const transactionSchema = joi.object({
-        type: joi.string().required(),
+        type: joi.string().valid("entrada", "saida").required(),
         amount: joi.number().required(),
         description: joi.string().required()
     });
