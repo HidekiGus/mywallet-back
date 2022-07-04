@@ -156,7 +156,7 @@ server.post("/transactions", async(req, res) => {
     }
 
     const { type, description, amount } = req.body;
-    const amountFloat = parseFloat(req.body.amount);
+    const amountFloat = parseFloat(amount);
 
     if (!authorization) {
         res.sendStatus(422);
@@ -209,4 +209,4 @@ server.delete("/sessions", async(req, res) => {
     };
 });
 
-server.listen(5000, ()=>{console.log("Servidor rodando!")});
+server.listen(process.env.PORT, ()=>{console.log("Servidor rodando na porta " + process.env.PORT)});
